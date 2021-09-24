@@ -9,33 +9,86 @@ const bot = new TelegramBot(token, {
     polling: true
 });
 
-// In-memory storage
-const URLs = [];
-const URLLabels = [];
-let tempSiteURL = '';
-
-const loactions = ['כיכר', 'אחר']
+const loactions = ['כיכר', 'אחר'];
 const newReportOptions = "דיווח חדש";
 const getReportsLastHoutOptions = "קבל דיווחים מהשעה האחרונה";
 const getReportsLastDayOptions = "קבל דיווחים מהיום האחרון";
-
+const reports = [];
 bot.on('message', (msg) => {
 
     const textMessage = msg.text.toString();
+    const chatId = msg.chat.id;
 
     if (textMessage === newReportOptions) {
-        bot.sendMessage(msg.chat.id, `${textMessage} התקבל בהצלחה`);
-    } else if (textMessage === getReportsLastHoutOptions) {
-        bot.sendMessage(msg.chat.id, `${textMessage} התקבל בהצלחה`);
+        bot.sendMessage(chatId, `בחר מיקום מהרשימה`, {
+            reply_markup: {
+                keyboard: [loactions],
+                resize_keyboard: true,
+                one_time_keyboard: true,
+                force_reply: true,
+            }
+        });
+    } else if (loactions.includes(textMessage)) {
+        const report = {
+            date: new Date(),
+            from: msg.from.first_name,
+            location: textMessage
+        }
+        reports.push(report);
+        bot.sendMessage(chatId, `דיווח מצ ב${textMessage} התקבל בהצלחה`);
     } else if (textMessage === getReportsLastDayOptions) {
-        bot.sendMessage(msg.chat.id, `${textMessage} התקבל בהצלחה`);
-    }
-    if (loactions.includes(textMessage)) {
-        bot.sendMessage(msg.chat.id, `דיווח מצ ב${textMessage} התקבל בהצלחה`);
+        const oneDay = 1000 * 60 * 60 * 24;
+        const lastDayReports = getLastReportsByTime(oneDay);
+        const messageString = buildReportsListMessage(lastDayReports);
+        bot.sendMessage(chatId, messageString);
+    } else if (textMessage === getReportsLastHoutOptions) {
+        const oneHour = 1000 * 60 * 60;
+        const lastDayReports = getLastReportsByTime(oneHour);
+        const messageString = buildReportsListMessage(lastDayReports);
+        bot.sendMessage(chatId, messageString);
+    } else {
+        const commandNotFoundMessage = "מצטער, לא לא מכירה את הפקודה";
+        bot.sendMessage(chatId, `${commandNotFoundMessage} \n ${baseMenuMessage}`,
+        { 
+                reply_markup: {
+                keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
+                resize_keyboard: true,
+                one_time_keyboard: true,
+                force_reply: true,
+            }
+        });
     }
     
 });
 
+const getLastReportsByTime = (time) => {
+    const increasDay = new Date(new Date() - time);
+    return reports.filter(report => report.date > increasDay);
+}
+
+const buildReportsListMessage = (lastReports) => {
+    let messageString = "";
+    const reportLocationTitle = "דווח מצ ב";
+    const reportDateTitle = "בשעה";
+    lastReports.forEach(report => {
+        const dateFormated = `${report.date.getHours().toString()}:${report.date.getMinutes().toString()}:${report.date.getSeconds().toString()}`;
+        messageString += `${reportLocationTitle}${report.location} ${reportDateTitle} ${dateFormated} \n`
+    })
+    messageString += `\n הליכה בטוחה :) \n`;
+    return messageString;
+}
+
+const baseMenuMessage = `
+    על מנת לקבל דיווחים יש לשלוח את אחד מהפקודות
+    /${getReportsLastHoutOptions}
+    /${getReportsLastDayOptions}
+
+    \n
+
+    לדיווח חדש יש לשלוח את מיקום המצ
+    מקומות מוכרים לבוט
+    ${loactions.join(", ")}
+`
 // Listener (handler) for telegram's /start event
 // This event happened when you start the conversation with both by the very first time
 // Provide the list of available commands
@@ -61,6 +114,9 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // =====================================
+const URLs = [];
+const URLLabels = [];
+let tempSiteURL = '';
 
 // Listener (handler) for telegram's /bookmark event
 bot.onText(/\/bookmark/, (msg, match) => {
