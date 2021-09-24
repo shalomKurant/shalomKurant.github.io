@@ -1,0 +1,24 @@
+{
+  "name": "shalomKurant.github.io",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shalomKurant/shalomKurant.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/shalomKurant/shalomKurant.github.io/issues"
+  },
+  "homepage": "https://github.com/shalomKurant/shalomKurant.github.io#readme",
+  "dependencies": {
+    "browserify": "^17.0.0",
+    "node-telegram-bot-api": "^0.54.0"
+  }
+}
