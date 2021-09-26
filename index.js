@@ -13,50 +13,53 @@ const getReportsLastHoutOptions = "קבל דיווחים מהשעה האחרונ
 const getReportsLastDayOptions = "קבל דיווחים מהיום האחרון";
 const reports = [];
 bot.on('message', (msg) => {
+    try {
+        const textMessage = msg.text.toString();
+        const chatId = msg.chat.id;
 
-    const textMessage = msg.text.toString();
-    const chatId = msg.chat.id;
-
-    if (textMessage === newReportOptions) {
-        bot.sendMessage(chatId, `בחר מיקום מהרשימה`, {
-            reply_markup: {
-                keyboard: [loactions],
-                resize_keyboard: true,
-                one_time_keyboard: true,
-                force_reply: true,
-            }
-        });
-    } else if (loactions.includes(textMessage)) {
-        const report = {
-            date: new Date(),
-            from: msg.from.first_name,
-            location: textMessage
+        if (textMessage === newReportOptions) {
+            bot.sendMessage(chatId, `בחר מיקום מהרשימה`, {
+                reply_markup: {
+                    keyboard: [loactions],
+                    resize_keyboard: true,
+                    one_time_keyboard: true,
+                    force_reply: true,
+                }
+            });
+        } else if (loactions.includes(textMessage)) {
+            const inlineKeyboardData = getCallbackInlineKeyboardDataReport(textMessage);
+            bot.sendMessage(chatId, 'עוד פרט קטן וסיימנו', inlineKeyboardData);
+        } 
+        else if (textMessage === getReportsLastDayOptions) {
+            const oneDay = 1000 * 60 * 60 * 24;
+            const lastDayReports = getLastReportsByTime(oneDay);
+            const messageString = buildReportsListMessage(lastDayReports);
+            bot.sendMessage(chatId, messageString, {parse_mode: 'HTML'});
+        } else if (textMessage === getReportsLastHoutOptions) {
+            const oneHour = 1000 * 60 * 60;
+            const lastDayReports = getLastReportsByTime(oneHour);
+            const messageString = buildReportsListMessage(lastDayReports);
+            bot.sendMessage(chatId, messageString, {parse_mode: 'HTML'});
+        } else if (textMessage.toUpperCase() === 'START') {
+            const getStartedMessage = "יאללה, בואי נתחיל";
+            bot.sendMessage(chatId, `${getStartedMessage} \n ${baseMenuMessage}`,
+            { 
+                reply_markup: baseMenuReplayMarkup
+            });
+        } else {
+            const commandNotFoundMessage = "מצטער, לא מכירה את הפקודה";
+            bot.sendMessage(chatId, `${commandNotFoundMessage} \n ${baseMenuMessage}`,
+            { 
+                reply_markup: baseMenuReplayMarkup
+            });
         }
-        reports.push(report);
-        bot.sendMessage(chatId, `דיווח מצ ב${textMessage} התקבל בהצלחה`);
-    } else if (textMessage === getReportsLastDayOptions) {
-        const oneDay = 1000 * 60 * 60 * 24;
-        const lastDayReports = getLastReportsByTime(oneDay);
-        const messageString = buildReportsListMessage(lastDayReports);
-        bot.sendMessage(chatId, messageString);
-    } else if (textMessage === getReportsLastHoutOptions) {
-        const oneHour = 1000 * 60 * 60;
-        const lastDayReports = getLastReportsByTime(oneHour);
-        const messageString = buildReportsListMessage(lastDayReports);
-        bot.sendMessage(chatId, messageString);
-    } else {
-        const commandNotFoundMessage = "מצטער, לא לא מכירה את הפקודה";
+    } catch (error) {
+        const commandNotFoundMessage = "ייתכן שמשהו השתבש, בואו ננסה מההתחלה";
         bot.sendMessage(chatId, `${commandNotFoundMessage} \n ${baseMenuMessage}`,
         { 
-                reply_markup: {
-                keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
-                resize_keyboard: true,
-                one_time_keyboard: true,
-                force_reply: true,
-            }
+            reply_markup: baseMenuReplayMarkup
         });
     }
-    
 });
 
 const getLastReportsByTime = (time) => {
@@ -65,14 +68,18 @@ const getLastReportsByTime = (time) => {
 }
 
 const buildReportsListMessage = (lastReports) => {
+    if (lastReports.length === 0) {
+        return `לא מצאו דיווחים, אם מישהו פספס, דווח לנו
+        הליכה נעימה ובטוחה 😊`
+    }
     let messageString = "";
-    const reportLocationTitle = "דווח מצ ב";
     const reportDateTitle = "בשעה";
     lastReports.forEach(report => {
+        const reportLocationTitle = `דווח מצ (${report.type}) ב`;
         const dateFormated = `${report.date.getHours().toString()}:${report.date.getMinutes().toString()}:${report.date.getSeconds().toString()}`;
-        messageString += `${reportLocationTitle}${report.location} ${reportDateTitle} ${dateFormated} \n`
+        messageString += `${reportLocationTitle}<b>${report.location}</b> ${reportDateTitle} ${dateFormated} \n`
     })
-    messageString += `\n הליכה בטוחה :) \n`;
+    messageString += `\n הליכה בטוחה 😊 \n`;
     return messageString;
 }
 
@@ -84,31 +91,101 @@ const baseMenuMessage = `
     \n
 
     לדיווח חדש יש לשלוח את מיקום המצ
-    מקומות מוכרים לבוט
+    מקומות מוכרים לבוט:
     ${loactions.join(", ")}
-`
+`;
+
+const baseMenuReplayMarkup = {
+    keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
+    resize_keyboard: true,
+    one_time_keyboard: true,
+    force_reply: true,
+}
 // Listener (handler) for telegram's /start event
 // This event happened when you start the conversation with both by the very first time
 // Provide the list of available commands
-bot.onText(/\/start/, (msg) => {
-    const chatId = msg.chat.id;
-    bot.sendMessage(
-        chatId,
-        `
-            Welcome at <b>ArticleBot</b>, thank you for using my service
+// bot.onText(/\/start/, (msg) => {
+//     const chatId = msg.chat.id;
+//     bot.sendMessage(
+//         chatId,
+//         `
+//             Welcome at <b>ArticleBot</b>, thank you for using my service
       
-            Available commands:
+//             Available commands:
         
-            /bookmark <b>URL</b> - save interesting article URL
-        `, {
-            parse_mode: 'HTML',
-            reply_markup: {
-                keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
-                resize_keyboard: true,
-                one_time_keyboard: true,
-                force_reply: true,
-            }
+//             /bookmark <b>URL</b> - save interesting article URL
+//         `, {
+//             parse_mode: 'HTML',
+//             reply_markup: {
+//                 keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
+//                 resize_keyboard: true,
+//                 one_time_keyboard: true,
+//                 force_reply: true,
+//             }
+//         });
+// });
+
+const regularMzType = "גלוי";
+const undercoverMzType = "סמוי - אזרחי";
+const undercoverUniformMzType = "סמוי - מדים";
+const getCallbackInlineKeyboardDataReport = (location) => {
+    return {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: regularMzType,
+                        callback_data: JSON.stringify({
+                            'command': regularMzType,
+                            'answer': location
+                        })
+                    },
+                    {
+                        text: undercoverMzType,
+                        callback_data: JSON.stringify({
+                            'command': undercoverMzType,
+                            'answer': location
+                        })
+                    },
+                    {
+                        text: undercoverUniformMzType,
+                        callback_data: JSON.stringify({
+                            'command': undercoverUniformMzType,
+                            'answer': location
+                        })
+                    }
+                ]
+            ]
+        }
+    };
+}
+
+
+bot.on('callback_query', (callbackQuery) => {
+    const message = callbackQuery.message;
+    const dataResponse = JSON.parse(callbackQuery.data);
+    const mzType = dataResponse.command;
+    const mzLocation = dataResponse.answer;
+
+    if (!dataResponse || !mzType || !mzLocation || !message) {
+        bot.sendMessage(message.chat.id, `משהו לא הסתדר לי, נסו שוב מההתחלה`, 
+        { 
+            reply_markup: baseMenuReplayMarkup 
+        });   
+    }
+    if (loactions.includes(mzLocation)) {
+        const report = {
+            date: new Date(),
+            from: message.chat.first_name,
+            location: mzLocation,
+            type: mzType
+        }
+        reports.push(report);
+        bot.sendMessage(message.chat.id, `דיווח מצ ב${mzLocation} התקבל בהצלחה`, 
+        { 
+            reply_markup: baseMenuReplayMarkup 
         });
+    }
 });
 
 // =====================================
@@ -176,19 +253,19 @@ bot.onText(/\/label/, (msg, match) => {
 });
 
 // Listener (handler) for callback data from /label command
-bot.on('callback_query', (callbackQuery) => {
-    const message = callbackQuery.message;
-    const category = callbackQuery.data;
+// bot.on('callback_query', (callbackQuery) => {
+//     const message = callbackQuery.message;
+//     const category = callbackQuery.data;
 
-    URLLabels.push({
-        url: tempSiteURL,
-        label: category,
-    });
+//     URLLabels.push({
+//         url: tempSiteURL,
+//         label: category,
+//     });
 
-    tempSiteURL = '';
+//     tempSiteURL = '';
 
-    bot.sendMessage(message.chat.id, `URL has been labeled with category "${category}"`);
-});
+//     bot.sendMessage(message.chat.id, `URL has been labeled with category "${category}"`);
+// });
 
 // Listener (handler) for showcasing different keyboard layout
 bot.onText(/\/keyboard/, (msg) => {
