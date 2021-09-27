@@ -2,52 +2,58 @@ process.versions.node = "12.18.3";
 const TelegramBot = require('node-telegram-bot-api');
 const token = "1984515967:AAGsQQkT1uqmbz2ctQV7kIIdQ7PbPQ9IYxg"; // process.env.TOKEN;
 
-// Created instance of TelegramBot
 const bot = new TelegramBot(token, {
     polling: true
 });
 
-const loactions = ['כיכר', 'אחר'];
+const loactions = [['', 'כיכר', 'פומ'], ['', 'אחר', 'כורכר', 'שג אגד']];
 const newReportOptions = "דיווח חדש";
 const getReportsLastHoutOptions = "קבל דיווחים מהשעה האחרונה";
 const getReportsLastDayOptions = "קבל דיווחים מהיום האחרון";
+const newReportCommand = "/newReport";
+const getReportsLastHoursCommand = "/getReportsLastHours";
+const getReportsLastDayCommand = "/getReportsLastDay";
+const regularMzType = "גלוי";
+const undercoverMzType = "סמוי - אזרחי";
+const undercoverUniformMzType = "סמוי - מדים";
 const reports = [];
+
 bot.on('message', (msg) => {
     try {
         const textMessage = msg.text.toString();
         const chatId = msg.chat.id;
 
-        if (textMessage === newReportOptions) {
-            bot.sendMessage(chatId, `בחר מיקום מהרשימה`, {
+        if (textMessage === newReportOptions || textMessage === newReportCommand) {
+            bot.sendMessage(chatId, `📍 בחר מיקום מהרשימה`, {
                 reply_markup: {
-                    keyboard: [loactions],
+                    keyboard: loactions,
                     resize_keyboard: true,
                     one_time_keyboard: true,
                     force_reply: true,
                 }
             });
-        } else if (loactions.includes(textMessage)) {
+        } else if (isLocation(textMessage)) {
             const inlineKeyboardData = getCallbackInlineKeyboardDataReport(textMessage);
             bot.sendMessage(chatId, 'עוד פרט קטן וסיימנו', inlineKeyboardData);
         } 
-        else if (textMessage === getReportsLastDayOptions) {
+        else if (textMessage === getReportsLastDayOptions || textMessage === getReportsLastDayCommand) {
             const oneDay = 1000 * 60 * 60 * 24;
             const lastDayReports = getLastReportsByTime(oneDay);
             const messageString = buildReportsListMessage(lastDayReports);
             bot.sendMessage(chatId, messageString, {parse_mode: 'HTML'});
-        } else if (textMessage === getReportsLastHoutOptions) {
+        } else if (textMessage === getReportsLastHoutOptions || textMessage === getReportsLastHoursCommand) {
             const oneHour = 1000 * 60 * 60;
             const lastDayReports = getLastReportsByTime(oneHour);
             const messageString = buildReportsListMessage(lastDayReports);
             bot.sendMessage(chatId, messageString, {parse_mode: 'HTML'});
         } else if (textMessage.toUpperCase() === 'START') {
-            const getStartedMessage = "יאללה, בואי נתחיל";
+            const getStartedMessage = "יאללה, בוא נתחיל";
             bot.sendMessage(chatId, `${getStartedMessage} \n ${baseMenuMessage}`,
             { 
                 reply_markup: baseMenuReplayMarkup
             });
         } else {
-            const commandNotFoundMessage = "מצטער, לא מכירה את הפקודה";
+            const commandNotFoundMessage = "מצטער, לא מכיר את הפקודה";
             bot.sendMessage(chatId, `${commandNotFoundMessage} \n ${baseMenuMessage}`,
             { 
                 reply_markup: baseMenuReplayMarkup
@@ -69,14 +75,14 @@ const getLastReportsByTime = (time) => {
 
 const buildReportsListMessage = (lastReports) => {
     if (lastReports.length === 0) {
-        return `לא מצאו דיווחים, אם מישהו פספס, דווח לנו
-        הליכה נעימה ובטוחה 😊`
+        return `✅ לא נמצאו דיווחים, אם מישהו פספס, דווח לנו
+                הליכה נעימה ובטוחה 😊`
     }
     let messageString = "";
     const reportDateTitle = "בשעה";
     lastReports.forEach(report => {
         const reportLocationTitle = `דווח מצ (${report.type}) ב`;
-        const dateFormated = `${report.date.getHours().toString()}:${report.date.getMinutes().toString()}:${report.date.getSeconds().toString()}`;
+        const dateFormated = `${report.date.getHours().toString()}:${report.date.getMinutes().toString()}`;
         messageString += `${reportLocationTitle}<b>${report.location}</b> ${reportDateTitle} ${dateFormated} \n`
     })
     messageString += `\n הליכה בטוחה 😊 \n`;
@@ -85,14 +91,16 @@ const buildReportsListMessage = (lastReports) => {
 
 const baseMenuMessage = `
     על מנת לקבל דיווחים יש לשלוח את אחד מהפקודות
-    /${getReportsLastHoutOptions}
-    /${getReportsLastDayOptions}
-
+    ${getReportsLastHoursCommand} - ${getReportsLastHoutOptions} 
+    ${getReportsLastDayCommand} - ${getReportsLastDayOptions}
+    ${newReportCommand} - ${newReportOptions}
     \n
 
-    לדיווח חדש יש לשלוח את מיקום המצ
+    לדיווח חדש אפשר לשלוח ישירות את מיקום המצ
     מקומות מוכרים לבוט:
-    ${loactions.join(", ")}
+    ${loactions.map(subLocations => {
+        return subLocations.join("\n 🔸")
+    })}
 `;
 
 const baseMenuReplayMarkup = {
@@ -101,54 +109,27 @@ const baseMenuReplayMarkup = {
     one_time_keyboard: true,
     force_reply: true,
 }
-// Listener (handler) for telegram's /start event
-// This event happened when you start the conversation with both by the very first time
-// Provide the list of available commands
-// bot.onText(/\/start/, (msg) => {
-//     const chatId = msg.chat.id;
-//     bot.sendMessage(
-//         chatId,
-//         `
-//             Welcome at <b>ArticleBot</b>, thank you for using my service
-      
-//             Available commands:
-        
-//             /bookmark <b>URL</b> - save interesting article URL
-//         `, {
-//             parse_mode: 'HTML',
-//             reply_markup: {
-//                 keyboard: [[newReportOptions], [getReportsLastHoutOptions], [getReportsLastDayOptions]],
-//                 resize_keyboard: true,
-//                 one_time_keyboard: true,
-//                 force_reply: true,
-//             }
-//         });
-// });
-
-const regularMzType = "גלוי";
-const undercoverMzType = "סמוי - אזרחי";
-const undercoverUniformMzType = "סמוי - מדים";
 const getCallbackInlineKeyboardDataReport = (location) => {
     return {
         reply_markup: {
             inline_keyboard: [
                 [
                     {
-                        text: regularMzType,
+                        text: regularMzType + ' 👮🏽',
                         callback_data: JSON.stringify({
                             'command': regularMzType,
                             'answer': location
                         })
                     },
                     {
-                        text: undercoverMzType,
+                        text: undercoverMzType + ' 👷🏼‍♂️',
                         callback_data: JSON.stringify({
                             'command': undercoverMzType,
                             'answer': location
                         })
                     },
                     {
-                        text: undercoverUniformMzType,
+                        text: undercoverUniformMzType + ' 💂🏽',
                         callback_data: JSON.stringify({
                             'command': undercoverUniformMzType,
                             'answer': location
@@ -160,7 +141,6 @@ const getCallbackInlineKeyboardDataReport = (location) => {
     };
 }
 
-
 bot.on('callback_query', (callbackQuery) => {
     const message = callbackQuery.message;
     const dataResponse = JSON.parse(callbackQuery.data);
@@ -171,9 +151,10 @@ bot.on('callback_query', (callbackQuery) => {
         bot.sendMessage(message.chat.id, `משהו לא הסתדר לי, נסו שוב מההתחלה`, 
         { 
             reply_markup: baseMenuReplayMarkup 
-        });   
+        });
+        return;   
     }
-    if (loactions.includes(mzLocation)) {
+    if (isLocation(mzLocation)) {
         const report = {
             date: new Date(),
             from: message.chat.first_name,
@@ -181,12 +162,16 @@ bot.on('callback_query', (callbackQuery) => {
             type: mzType
         }
         reports.push(report);
-        bot.sendMessage(message.chat.id, `דיווח מצ ב${mzLocation} התקבל בהצלחה`, 
+        bot.sendMessage(message.chat.id, `דיווח מצ ב${mzLocation} התקבל בהצלחה 🆗`, 
         { 
             reply_markup: baseMenuReplayMarkup 
         });
     }
 });
+
+const isLocation = (stringLocation) => {
+    return loactions.some(subLocations => subLocations.includes(stringLocation))
+}
 
 // =====================================
 const URLs = [];
